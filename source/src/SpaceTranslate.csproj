@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <AssemblyName>SpaceTranslate</AssemblyName><Version>1.1.0</Version>
+    <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PublishSingleFile>true</PublishSingleFile><SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier><IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType><DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="Core.cs" /><Compile Include="Native.cs" /><Compile Include="App.cs" /><Compile Include="BrandIcons.cs" /><Compile Include="BrandTheme.cs" /><Compile Include="TranslationOptions.cs" /><Compile Include="FeatureUi.cs" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/app.ico" LogicalName="SpaceTranslate.Assets.app.ico" />
+    <EmbeddedResource Include="Assets/paused.ico" LogicalName="SpaceTranslate.Assets.paused.ico" />
+  </ItemGroup>
+</Project>

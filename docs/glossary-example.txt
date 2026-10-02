@@ -1,0 +1,10 @@
+# UTF-8：三列之间使用 Tab 制表符。导入会替换当前自定义词库。
+# 目标语言代码	原词	指定译法
+en	滚珠轴承	ball bearing
+en	轴承座	bearing housing
+en	起订量	minimum order quantity
+en	我知道了	Understood.
+zh	ball bearing	滚珠轴承
+fr	滚珠轴承	roulement à billes
+ja	滚珠轴承	玉軸受
+es	滚珠轴承	rodamiento de bolas

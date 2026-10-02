@@ -1,0 +1,14 @@
+空格翻译 SpaceTranslate 1.0.15 / FIX10
+
+1. 保持本机 Ollama 和现有模型配置不变。
+2. 从托盘退出旧版，然后运行 release-v1.0.15-fix10\SpaceTranslate.exe。
+3. EXE、DLL、deps.json、runtimeconfig.json 必须在同一目录；本包依赖 .NET 8 Windows Desktop Runtime x64。
+4. 等待“准备好了”，点击“隐藏到后台”。
+5. 中文输入结束后快速按两次空格：全文译成英文。
+6. 选中文字：Ctrl+Alt+E 译英文；Ctrl+Alt+Z 译中文。
+7. Ctrl+Alt+P 暂停 / 恢复。
+
+捕获完成后切窗或继续输入，译文会交付剪贴板，按 Ctrl+V 手动粘贴。
+留在原输入框且未编辑时核对原文后自动替换。不会自动发送消息。
+
+完整说明见 README.md，历史要求见 docs\REQUIREMENTS.md。

@@ -1,0 +1,34 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+*.cache
+
+# Local NuGet cache (re-downloadable, hundreds of MB)
+source/.nuget/
+
+# Sandbox build redirects (recreated automatically)
+source/.dotnet-home/
+source/.fake-appdata/
+
+# Release EXE directories (the 154 MB self-contained SpaceTranslate.exe goes
+# into GitHub Release Assets instead of git history)
+release-*/
+
+# User-specific diagnostics & temporary state (runtime generated)
+diagnostics.log
+*.log
+settings.json
+glossary.txt
+*.log.previous
+settings.json.tmp
+glossary.txt.tmp
+diagnostics-snippets.txt
+SpaceTranslate-export-*.zip
+
+# OS / IDE
+.vs/
+.vscode/
+Thumbs.db
+.DS_Store
