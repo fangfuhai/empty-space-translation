@@ -4,23 +4,25 @@
 
 Windows 后台输入翻译工具。写完中文，快速按两次空格，通过本机 Ollama 翻译；也支持选区中英互译。适用于日常聊天、商务沟通，不自动发送消息。
 
-稳定版本：**1.0.15 / FIX10**，构建标识 `ST-20261001-FIX10-Blue`。作者：方赋海（Linthon）。
+最新版本：**1.1.1**，构建标识 `ST-20261013-V111-Reliability`。作者：方赋海（Linthon）。
 
-另有 **1.1.0 功能试用版**：自定义 TXT 词库、多语种目标选择、故障日志导出。新增语言的模型质量仍需验证，仅交付剪贴板。见 [试用说明](docs/FEATURES-1.1.md) 和 [词库模板](docs/glossary-example.txt)。
+1.1.1 修复模糊金额、小写币种、裸价格、季度区间和多行包装说明；新增常用快速回复、QTA 业务词条和可选开机启动。保留自定义 TXT 词库、多语种目标选择、故障日志导出；新增七种语言仍为试用，仅交付剪贴板。见 [本次更新](docs/RELEASE-1.1.1.md)、[功能说明](docs/FEATURES-1.1.md) 和 [词库模板](docs/glossary-example.txt)。
 
 ## 下载
+
+- [1.1.1 最新版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.1-win-x64.zip)：本次修复和开机启动。[发布说明](docs/RELEASE-1.1.1.md)
 
 - [1.0.15 稳定版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.0.15-win-x64.zip)：日常中英翻译。[发布说明](docs/RELEASE-1.0.15.md)
 - [1.1.0 Preview 试用版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.0-preview-win-x64.zip)：自定义词库、多语种、日志导出。[发布说明](docs/RELEASE-1.1.0-preview.md)
 - [下载包 SHA-256 校验值](downloads/SHA256.txt)
 
-完整解压后运行其中的 SpaceTranslate.exe，保留全部配套文件。本包需 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。**当前仓库源码对应 1.1.0 试用版；1.0.15 提供已保留的运行包，不冒充具有独立历史源码标签。**
+完整解压后运行其中的 SpaceTranslate.exe，保留全部配套文件。本包需 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。**当前仓库源码对应 1.1.1；1.0.15 提供已保留的运行包，不冒充具有独立历史源码标签。**
 
 ## 使用方式
 
 | 操作 | 默认行为 |
 | --- | --- |
-| 快速双空格 | 读取当前输入框全文，含中文时译成英文 |
+| 快速双空格 | 读取当前输入框全文，译成所选目标语言（默认英文） |
 | Ctrl+Alt+E | 将选中文字译成英文 |
 | Ctrl+Alt+Z | 将选中文字译成简体中文 |
 | Ctrl+Alt+P | 暂停 / 恢复翻译 |
@@ -33,9 +35,10 @@ Windows 后台输入翻译工具。写完中文，快速按两次空格，通过
 
 1. 使用 Windows 10 / 11 x64，安装并启动 [Ollama](https://ollama.com/download/windows)。下载模型需要网络，已准备好的本地模型可用于离线翻译。
 2. 当前用户验证配置为 `qwen2.5:7b`；全新配置的源码默认值仍为 `qwen3:4b`。程序按配置使用模型，已有用户保留原配置即可，不会自动换成更大的模型。
-3. 本次本地包位于 `release-v1.0.15-fix10/`，依赖 .NET 8 Windows Desktop Runtime x64。EXE、DLL、deps.json、runtimeconfig.json 四个文件必须保留在同一目录。Git 仓库不包含本地发布目录，源码构建方式见下文。
+3. 本次本地包位于 `release-v1.1.1/`，依赖 .NET 8 Windows Desktop Runtime x64。EXE、DLL、deps.json、runtimeconfig.json 四个文件必须保留在同一目录。Git 仓库不包含本地发布目录，源码构建方式见下文。
 4. 双击 SpaceTranslate.exe。需要时点击“准备模型”，等待“准备好了”，再点击“隐藏到后台”。首次准备可能下载配置中指定的模型，耗时与网络、模型和硬件有关。
 5. 先用记事本测试双空格；英文译中文请选中文字后按 Ctrl+Alt+Z。升级时从托盘退出旧程序，再启动新版，避免同时运行多个版本。
+6. 需要开机启动时，勾选主窗口底部“登录 Windows 后自动启动（后台运行）”。默认关闭；移动程序目录后取消再重新勾选。Ollama 应自行设置为登录启动；如果其尚未就绪，请在主窗口点击“准备模型”。
 
 ## 配置与资源
 
@@ -43,13 +46,15 @@ Windows 后台输入翻译工具。写完中文，快速按两次空格，通过
 
 当前验证使用 qwen2.5:7b，每个请求独立，不保留聊天上下文。生成参数：temperature 0.1、num_ctx 8192、num_predict 2048、repeat_penalty 1.05，keep_alive 为 15 分钟。校验失败最多修复重试一次，共享原任务超时。默认超时 30 秒、输入上限 4000 字符。
 
-内置少量整句精确匹配，如“我知道了”“你可以放心”“那我就拭目以待吧”，命中时无需模型请求。不会将短语替换进长句。速度取决于模型加载、文本长度、GPU/CPU 和内存；本轮未更换用户模型或增加内存参数。模型资源占用与客户端体积不同。
+内置少量整句精确匹配，如“稍等”“没问题”“请等待一下”“你可以放心”“那我就拭目以待吧”，命中时无需模型请求。不会将短语替换进长句。速度取决于模型加载、文本长度、GPU/CPU 和内存；本轮未更换用户模型或增加内存参数。模型资源占用与客户端体积不同。作者当前环境是 i7-11700K、GTX 1660 6 GB、约 32 GB 内存；详细测量、模型选择理由和限制见 [环境与模型](docs/ENVIRONMENT.md)。
 
 ## 翻译原则与边界
 
 - 保留情绪、拒绝强度、不确定性、疑问和承诺，不擅自添加保证、问候或销售话术。
 - 金额和币种整体保护，不做汇率换算；保护数字、型号和日期，恢复后交付。
 - 支持中文数字日期、省略“日”和 ISO 日期。例如“二〇二六年九月二十九日” → 2026-09-29，“十月二十七” → Oct 27；没有年份就不补年份。
+- “好几千块钱”保留为 several thousand CNY，不能猜具体数；`20rmb` 和 `27Q4-28Q1` 整体保护，未指定币种的价格不添加币种。QTA 在作者业务中指加急样品，默认译为 expedited sample，自定义词库优先。
+- 多行文档按非空行完整请求和校验，恢复空行；最多 80 个非空行。
 - 空译文、缺失/重复/损坏的保护信息会被拒绝。英文中文残留会触发检查，中文专名可能因此需要人工处理。
 - JSON 有效、长度正常和数字齐全都不能证明语义完整，重要内容请核对后发送。
 - 复制粘贴受 Windows 焦点、输入活动和控件行为影响，不能保证所有应用完全一致。
@@ -69,16 +74,17 @@ C# / .NET 8 WinForms。需要 Windows 和 .NET 8 SDK。入口为 [App.cs](source
 dotnet run --project source/tests/Tests.csproj
 dotnet run --project source/regression/Regression.csproj
 
-# 当前源码为 1.1.0 Preview，不能覆盖保留的稳定版目录
-dotnet build source/src/SpaceTranslate.csproj -c Release -p:SelfContained=false -p:PublishSingleFile=false -o release-v1.1.0-preview
+# 当前源码为 1.1.1，保留旧版本目录供回退
+dotnet build source/src/SpaceTranslate.csproj -c Release -p:SelfContained=false -p:PublishSingleFile=false -o release-v1.1.1
 
 # 可选自包含发布，体积更大
 dotnet publish source/src/SpaceTranslate.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o release-self-contained
 
 # 可选真实模型测试，读取个人配置并占用模型资源
 dotnet run --project source/regression/Regression.csproj -- live-feedback
+dotnet run --project source/regression/Regression.csproj -- live-october
 ```
 
-FIX8 记录：基础测试 52 PASS，定向测试 18 PASS，均 0 FAIL / 0 SKIP；本机固定样本 14 条返回，0 FAIL / 0 SKIP，并检查关键语义。构建 0 警告 / 0 错误。这是当次验证记录，不是所有机器和输入的效果保证。
+1.1.1 最终验证：基础测试 52 PASS、定向测试 34 PASS，均 0 FAIL / 0 SKIP；真实模型样本 14 + 7 条返回，0 FAIL / 0 SKIP，并人工审阅关键语义。构建 0 警告 / 0 错误。没有操作真实桌面或写入开机启动注册表，登录自启动及输入框行为需实际验收。测试的返回状态不代表语义完美；细节与修复中失败记录见 [发布说明](docs/RELEASE-1.1.1.md)。
 
 详细要求见 [需求与验收记录](docs/REQUIREMENTS.md)，更新见 [更新记录](docs/CHANGELOG.md)。源码采用 [MIT](LICENSE.txt)；外部模型和运行时遵循各自许可，见 [贡献与依赖](CREDITS.md)。

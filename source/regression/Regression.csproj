@@ -5,5 +5,5 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup><Compile Include="../src/Core.cs" Link="Core.cs" /><Compile Include="../src/TranslationOptions.cs" Link="TranslationOptions.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../src/Core.cs" Link="Core.cs" /><Compile Include="../src/TranslationLayout.cs" Link="TranslationLayout.cs" /><Compile Include="../src/StartupRegistration.cs" Link="StartupRegistration.cs" /><Compile Include="../src/TranslationOptions.cs" Link="TranslationOptions.cs" /></ItemGroup>
 </Project>

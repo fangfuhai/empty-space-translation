@@ -6,6 +6,8 @@ using SpaceTranslate;
 if (args is ["live-feedback"]) { await LiveFeedback(); return; }
 if (args is ["live-feedback", var selected]) { await LiveFeedback(selected); return; }
 if (args is ["live-languages"]) { await LiveLanguages(); return; }
+if (args is ["live-october"]) { await OctoberFeedback.Run(); return; }
+if (args is ["live-october", var selectedOctober]) { await OctoberFeedback.Run(selectedOctober); return; }
 int passed = 0, failed = 0;
 async Task Check(string name, Func<Task> action)
 {
@@ -27,6 +29,97 @@ async Task RejectAsync(Func<Task> action)
     try { await action(); } catch (InvalidDataException) { return; }
     throw new Exception("Expected InvalidDataException");
 }
+await Check("approximate amounts stay vague and cannot become exact thousands", () => Sync(() =>
+{
+    foreach (var pair in new[] { ("好几千块钱", "several thousand CNY"), ("几十美元", "several tens of USD"), ("几百美元", "several hundred USD"), ("几万rmb", "several tens of thousands RMB") })
+    {
+        var text = new ProtectedText(pair.Item1, true);
+        Equal(1, text.ProtectedCount); Equal(pair.Item2, text.Restore(text.Masked));
+        Reject(() => text.Restore("1000 CNY"));
+        Equal(pair.Item1, new ProtectedText(pair.Item1, false, language: "zh").Restore(text.Masked));
+    }
+    foreach (string source in new[] { "好几千个玩具", "几千元件", "一块蛋糕", "三个单元", "这个模块" })
+    {
+        var text = new ProtectedText(source, true);
+        Equal(source, text.Restore(text.Masked));
+        Equal(false, text.ProtectedMap.Values.Any(v => v.Contains("CNY")));
+    }
+}));
+await Check("currency code case and complete quarter ranges preserve facts", () => Sync(() =>
+{
+    foreach (string source in new[] { "20rmb", "20Rmb", "20RMB" })
+    { var text = new ProtectedText(source, true); Equal(1,text.ProtectedCount); Equal("RMB 20",text.Restore(text.Masked)); }
+    foreach (string source in new[] { "27Q4-28Q1", "2027Q4–2028Q1", "27q4" })
+    { var text = new ProtectedText(source, true); Equal(1,text.ProtectedCount); Equal(source,text.Restore(text.Masked)); Reject(() => text.Restore("28Q1")); }
+    var word = new ProtectedText("20rmbody", true); Equal("20rmbody",word.Restore(word.Masked));
+}));
+await Check("quick replies and confirmed QTA meaning use local exact matching", async () =>
+{
+    using var client = new OllamaClient(new Settings(), new MockHandler(_ => throw new Exception("Unexpected request")));
+    foreach (var pair in new[] { ("稍等","One moment, please."), ("没问题","No problem."), ("请等待一下","Please wait a moment."), ("qta","expedited sample"), ("QTA","expedited sample") })
+        Equal(pair.Item2, await client.TranslateAsync(pair.Item1,true,CancellationToken.None));
+    Equal("加急样品",await client.TranslateAsync("qta",false,CancellationToken.None));
+    Equal("shipping mark",await client.TranslateAsync("唛头",true,CancellationToken.None));
+    var terms = Terminology.Parse("en\tqta\trush sample");
+    Equal("rush sample", new ProtectedText("qta",true,terms).Restore("[ZXQTERM0Z]"));
+    Equal("shipping label", new ProtectedText("唛头",true,Terminology.Parse("en\t唛头\tshipping label")).Restore("[ZXQTERM0Z]"));
+    var unexpanded = new ProtectedText("qtable",true,Terminology.Empty); Equal("qtable",unexpanded.Restore(unexpanded.Masked));
+});
+await Check("long replies and negatives never hit a quick-reply substring", async () =>
+{
+    int calls = 0;
+    using var client = new OllamaClient(new Settings(), new MockHandler(_ => { calls++; return Task.FromResult(Reply("A contextual translation")); }));
+    foreach (string source in new[] { "不是没问题", "请等待一下，但不要付款", "稍等，我不能保证有货" }) await client.TranslateAsync(source,true,CancellationToken.None);
+    Equal(3,calls);
+});
+await Check("amount metadata never invites expansion and lost amounts still fail after retry", async () =>
+{
+    int calls = 0;
+    using var client = new OllamaClient(new Settings(),new MockHandler(async request =>
+    {
+        calls++;
+        string body = await request.Content!.ReadAsStringAsync();
+        foreach (string leaked in new[] { "several thousand", "CNY", "RMB", "20rmb" }) Equal(false,body.Contains(leaked));
+        Equal(true,body.Contains("monetary amount"));
+        return Reply("We hope to make that much profit.");
+    }));
+    await RejectAsync(() => client.TranslateAsync("赚好几千块钱，比20rmb多",true,CancellationToken.None));
+    Equal(2,calls);
+});
+await Check("multiline layout requires title and every nonempty line, restores blank lines", () => Sync(() =>
+{
+    var layout = new TranslationLayout("标题\n\n内容\n");
+    Equal("Title\n\nBody\n", layout.RestoreJson("{\"line000\":\"Title\",\"line002\":\"Body\"}"));
+    foreach (string bad in new[] { "{}", "{\"line002\":\"Body\"}", "{\"line000\":\"\",\"line002\":\"Body\"}", "{\"line000\":\"Title\",\"line000\":\"Body\"}" }) Reject(() => layout.RestoreJson(bad));
+    Equal("A\nB\nC", TranslationLayout.CleanBreaks("A<br>B<dr/>C","标题\n正文"));
+    Equal("<br>", TranslationLayout.CleanBreaks("<br>","请保留<br>"));
+    Equal("x < 5", TranslationLayout.CleanBreaks("x < 5","x < 5"));
+}));
+await Check("multiline requests require each line and hide literal bare prices", async () =>
+{
+    using var client = new OllamaClient(new Settings(),new MockHandler(async request =>
+    {
+        string body = await request.Content!.ReadAsStringAsync();
+        Equal(false, body.Contains("260"));
+        using var json = JsonDocument.Parse(body);
+        Equal(2,json.RootElement.GetProperty("format").GetProperty("required").GetArrayLength());
+        return Reply("{\"line000\":\"Title\",\"line002\":\"The price is [ZXQ0Z].\"}");
+    }));
+    Equal("Title\n\nThe price is 260.",await client.TranslateAsync("标题\n\n价格260",true,CancellationToken.None));
+});
+await Check("startup is opt-in, quoted, reversible, and failures propagate", () => Sync(() =>
+{
+    var store = new FakeStartupStore();
+    var startup = new StartupRegistration(store,@"C:\Program Files\空格翻译\SpaceTranslate.exe");
+    Equal(false,startup.Enabled); Equal(0,store.Writes);
+    startup.SetEnabled(true); Equal(true,startup.Enabled); Equal(true,startup.UsesCurrentExecutable);
+    Equal("\"C:\\Program Files\\空格翻译\\SpaceTranslate.exe\" --background",store.Command);
+    startup.SetEnabled(false); Equal(false,startup.Enabled);
+    Reject(() => StartupRegistration.BuildCommand("program.exe"));
+    Reject(() => StartupRegistration.BuildCommand("C:\\bad\"path.exe"));
+    store.Fail = true;
+    try { startup.SetEnabled(true); throw new Exception("Expected IO failure"); } catch (IOException) { }
+}));
 await Check("glossary validates complete input and rejects duplicates and protected facts", () => Sync(() =>
 {
     Equal(2, Terminology.Parse("# comment\nen\t轴承\tbearing\nfr\t轴承\troulement").Entries.Count);
@@ -367,6 +460,15 @@ static async Task LiveFeedback(string selected = "")
 sealed class MockHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> send) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => send(request);
+}
+sealed class FakeStartupStore : IStartupStore
+{
+    public string? Command;
+    public int Writes;
+    public bool Fail;
+    public string? Read() => Command;
+    public void Write(string value) { if (Fail) throw new IOException("fake failure"); Command=value; Writes++; }
+    public void Remove() { if (Fail) throw new IOException("fake failure"); Command=null; }
 }
 // Opt-in trace only for the fixed fixtures above, never real desktop/private input.
 sealed class FixtureTraceHandler : DelegatingHandler

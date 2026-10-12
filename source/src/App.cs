@@ -18,13 +18,13 @@ internal static class Program
     internal static readonly string ConfigPath = Path.Combine(DataDirectory, "settings.json");
     internal static readonly string DiagnosticsLogPath = Path.Combine(DataDirectory, "diagnostics.log");
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         using var mutex = new Mutex(true, @"Local\SpaceTranslate-1", out bool first);
         if (!first) { MessageBox.Show("空格翻译已经在运行。请在任务栏右下角找到它的托盘图标。", "空格翻译"); return; }
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
-        try { var cfg = Settings.Load(ConfigPath); Application.Run(new MainForm(cfg)); }
+        try { var cfg = Settings.Load(ConfigPath); Application.Run(new MainForm(cfg, args.Contains("--background", StringComparer.Ordinal))); }
         catch (Exception e)
         { MessageBox.Show("无法启动空格翻译：\n" + e.Message + "\n\n配置位置：" + ConfigPath, "空格翻译", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
@@ -116,7 +116,7 @@ internal sealed class MainForm : Form
         { Cancel = new(TimeSpan.FromSeconds(seconds)); Focus = focus; Revision = revision; CanReplace = true; }
         public void Dispose() => Cancel.Dispose();
     }
-    internal MainForm(Settings settings)
+    internal MainForm(Settings settings, bool startHidden = false)
     {
         cfg = settings; cfg.Log = msg => Program.Log(cfg, msg);
         Program.Log(cfg, $"SESSION build={cfg.BuildStamp}");
@@ -132,7 +132,7 @@ internal sealed class MainForm : Form
         client = new(cfg); paused = File.Exists(pausePath);
         Text = "空格翻译 " + cfg.BuildStamp; AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Microsoft YaHei UI", 10); BackColor = BrandTheme.Background; ForeColor = BrandTheme.Ink;
-        ClientSize = new Size(620, 522); FormBorderStyle = FormBorderStyle.FixedSingle;
+        ClientSize = new Size(620, 562); FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false; StartPosition = FormStartPosition.CenterScreen;
         activeIcon = BrandIcons.Load("app", SystemInformation.SmallIconSize.Width);
         pausedIcon = BrandIcons.Load("paused", SystemInformation.SmallIconSize.Width);
@@ -191,6 +191,38 @@ internal sealed class MainForm : Form
         importButton.Click += (_, _) => FeatureUi.ImportTerms(this, cfg);
         exportButton.Click += (_, _) => FeatureUi.ExportLog(this, cfg);
         Controls.AddRange([importButton, exportButton]);
+        var startup = new StartupRegistration(new WindowsStartupStore(), Application.ExecutablePath);
+        var startupCheck = new CheckBox { Text = "登录 Windows 后自动启动（后台运行）", AutoSize = true, Location = new Point(35, 523) };
+        Controls.Add(startupCheck);
+        try
+        {
+            startupCheck.Checked = startup.Enabled;
+            if (startupCheck.Checked && !startup.UsesCurrentExecutable)
+                startupCheck.Text = "开机启动指向旧位置（取消后重新勾选以更新）";
+        }
+        catch (Exception e)
+        {
+            startupCheck.Enabled = false; startupCheck.Text = "无法读取开机启动设置";
+            Program.Log(cfg, $"ERROR stage=startup_read type={e.GetType().Name}");
+        }
+        bool changingStartup = false;
+        startupCheck.CheckedChanged += (_, _) =>
+        {
+            if (changingStartup) return;
+            bool requested = startupCheck.Checked;
+            try
+            {
+                startup.SetEnabled(requested);
+                startupCheck.Text = "登录 Windows 后自动启动（后台运行）";
+                Notice(requested ? "开机启动已开启。登录 Windows 后在后台运行。" : "开机启动已关闭。");
+            }
+            catch (Exception e)
+            {
+                changingStartup = true; startupCheck.Checked = !requested; changingStartup = false;
+                Program.Log(cfg, $"ERROR stage=startup_write type={e.GetType().Name}");
+                Notice("开机启动设置失败，请检查当前用户的注册表权限。");
+            }
+        };
         popup.ConfigureLanguage(cfg.TargetLanguage, SelectLanguage);
         menu.Items.Add(languageMenu);
         menu.Items.Add("选择目标语言（右下角）", null, (_, _) => { Notice("选择下一次双空格翻译的目标语言。"); popupUntil = Environment.TickCount64 + 15000; });
@@ -210,6 +242,7 @@ internal sealed class MainForm : Form
         timer.Tick += (_, _) => Tick(); timer.Start();
         Shown += async (_, _) =>
         {
+            if (startHidden) Hide();
             try
             {
                 try { RuntimeHelpers.RunClassConstructor(typeof(ProtectedText).TypeHandle); }

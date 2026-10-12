@@ -1,10 +1,10 @@
-空格翻译 SpaceTranslate 1.0.15 / FIX10
+空格翻译 SpaceTranslate 1.1.1
 
 1. 保持本机 Ollama 和现有模型配置不变。
-2. 从托盘退出旧版，然后运行 release-v1.0.15-fix10\SpaceTranslate.exe。
+2. 从托盘退出旧版，然后运行 release-v1.1.1\SpaceTranslate.exe。
 3. EXE、DLL、deps.json、runtimeconfig.json 必须在同一目录；本包依赖 .NET 8 Windows Desktop Runtime x64。
 4. 等待“准备好了”，点击“隐藏到后台”。
-5. 中文输入结束后快速按两次空格：全文译成英文。
+5. 输入结束后快速按两次空格：全文译成当前选择的语言（默认英文）。
 6. 选中文字：Ctrl+Alt+E 译英文；Ctrl+Alt+Z 译中文。
 7. Ctrl+Alt+P 暂停 / 恢复。
 
@@ -12,3 +12,7 @@
 留在原输入框且未编辑时核对原文后自动替换。不会自动发送消息。
 
 完整说明见 README.md，历史要求见 docs\REQUIREMENTS.md。
+
+开机启动：主窗口底部勾选“登录 Windows 后自动启动（后台运行）”，默认关闭。
+搬动程序后取消并重新勾选，更新启动路径。Ollama 尚未就绪时打开主窗口点击“准备模型”。
+本次更新、测试及待验收项见 docs\RELEASE-1.1.1.md；机器配置和模型理由见 docs\ENVIRONMENT.md。
