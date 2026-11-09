@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
-    <AssemblyName>SpaceTranslate</AssemblyName><Version>1.1.1</Version>
+    <AssemblyName>SpaceTranslate</AssemblyName><Version>1.1.2</Version>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PublishSingleFile>true</PublishSingleFile><SelfContained>true</SelfContained>

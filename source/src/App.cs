@@ -331,55 +331,30 @@ internal sealed class MainForm : Form
         catch { Notice("状态已切换，但未能保存到下次启动。"); }
         RefreshState(); Notice(paused ? $"翻译已暂停\n{cfg.ToggleHotkey} 恢复" : "翻译已恢复\n写完内容，空格两下");
     }
-    private async Task CheckAsync()
-    {
-        prepare.Enabled = false; toggle.Enabled = false;
-        try
-        {
-            using var ct = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            bool present = await client.HasModelAsync(ct.Token);
-            if (present) { await PrepareAsync(); return; }
-            State("还差一个小模型", "点击“准备模型”，下载约 2.5 GB。只需首次下载，日常翻译无按次费用。");
-        }
-        catch { State("需要启动本地翻译服务", "点击“准备模型”，程序会尝试启动已安装的 Ollama。"); }
-        finally { if (!exiting) prepare.Enabled = true; }
-    }
+    private Task CheckAsync() => PrepareAsync(allowDownload: false);
     private static string? FindOllama()
     {
         var paths = new List<string> { Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Ollama", "ollama.exe") };
         paths.AddRange((Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator).Where(p => p.Length > 0).Select(p => Path.Combine(p.Trim('"'), "ollama.exe")));
         return paths.FirstOrDefault(File.Exists);
     }
-    private async Task PrepareAsync()
+    private async Task PrepareAsync(bool allowDownload = true)
     {
         if (prepareToken != null || exiting) return;
-        using var prep = new CancellationTokenSource(TimeSpan.FromMinutes(20)); prepareToken = prep;
+        using var prep = new CancellationTokenSource(TimeSpan.FromMinutes(allowDownload ? 20 : 3)); prepareToken = prep;
         prepare.Enabled = false; toggle.Enabled = false; ready = false; RefreshState();
         try
         {
-            State("正在连接 Ollama", "首次准备包括下载和预热，完成后每次翻译最多等待 30 秒。");
-            bool online;
-            try { using var probe = CancellationTokenSource.CreateLinkedTokenSource(prep.Token); probe.CancelAfter(1800); using var tags = await client.GetAsync("api/tags", probe.Token); online = true; }
-            catch { online = false; }
-            if (!online)
+            State("正在连接 Ollama", "正在自动连接、启动本地服务并预热已有模型，请稍候。");
+            bool present = await ServiceReadiness.WaitAsync(client.HasModelAsync, () =>
             {
                 string? path = FindOllama();
-                if (path == null) throw new IOException("没有找到 Ollama。请点击下方“安装 / 更新 Ollama”，安装完成后回来点击重试。");
-                Process.Start(new ProcessStartInfo(path, "serve") { UseShellExecute = false, CreateNoWindow = true });
-                for (int i = 0; i < 12 && !online; i++)
-                {
-                    await Task.Delay(600, prep.Token);
-                    try { using var p = CancellationTokenSource.CreateLinkedTokenSource(prep.Token); p.CancelAfter(1200); using var tags = await client.GetAsync("api/tags", p.Token); online = true; }
-                    catch (OperationCanceledException) when (!prep.IsCancellationRequested) { }
-                    catch (HttpRequestException) { }
-                }
-                if (!online) throw new IOException("Ollama 没有正常启动。请从开始菜单打开 Ollama；仍失败时更新 Ollama 后重试。");
-            }
-            using (var probe = CancellationTokenSource.CreateLinkedTokenSource(prep.Token))
+                if (path == null) throw new IOException("没有找到 Ollama，请先安装 Ollama 后重试。");
+                using var process = Process.Start(new ProcessStartInfo(path, "serve") { UseShellExecute = false, CreateNoWindow = true });
+            }, (delay, token) => Task.Delay(delay, token), prep.Token);
+            if (!present)
             {
-                probe.CancelAfter(3000);
-                if (!await client.HasModelAsync(probe.Token))
-                {
+                if (!allowDownload) throw new IOException("当前配置的模型尚未安装；请打开主窗口点击“准备模型”。自动启动不会下载模型。");
                     State("正在准备翻译模型", "下载进度会显示在这里；中断后可重新准备。不会下载其他大型模型。");
                     await client.PullAsync((message, value) => Post(() =>
                     {
@@ -387,7 +362,6 @@ internal sealed class MainForm : Form
                         progress.Style = value.HasValue ? ProgressBarStyle.Continuous : ProgressBarStyle.Marquee;
                         if (value.HasValue) progress.Value = (int)(100 * value.Value);
                     }), prep.Token);
-                }
             }
             State("正在预热模型", "首次加载可能需要 1–2 分钟。日常翻译会显示 30 秒倒计时。");
             progress.Style = ProgressBarStyle.Marquee;
@@ -400,7 +374,10 @@ internal sealed class MainForm : Form
         catch (OperationCanceledException)
         { if (!exiting) State("准备已停止", "网络下载或首次加载超时，请重试。已下载的模型无需重新完整下载。"); }
         catch (Exception e)
-        { if (!exiting) State("暂时没有准备好", Friendly(e)); }
+        {
+            Program.Log(cfg, $"ERROR stage=model_prepare type={e.GetType().Name}");
+            if (!exiting) { State("暂时没有准备好", Friendly(e)); Notice("模型准备失败，请打开主窗口查看原因并重试。"); }
+        }
         finally
         { prepareToken = null; if (!exiting) { prepare.Enabled = true; progress.Style = ProgressBarStyle.Continuous; RefreshState(); } }
     }

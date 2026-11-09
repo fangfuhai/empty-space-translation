@@ -28,7 +28,7 @@ public sealed class Settings
     public string TargetLanguage { get; set; } = "en";
     [System.Text.Json.Serialization.JsonIgnore] public Terminology Terms { get; set; } = Terminology.Empty;
     [System.Text.Json.Serialization.JsonIgnore] public Action<string>? Log { get; set; }
-    [System.Text.Json.Serialization.JsonIgnore] public string BuildStamp { get; } = "ST-20261013-V111-Reliability";
+    [System.Text.Json.Serialization.JsonIgnore] public string BuildStamp { get; } = "ST-20261109-V112-Startup";
     public string EnglishPrompt { get; set; } = "Translate the user message into natural, concise English for everyday business customer chats on WhatsApp, Instagram or Facebook. Preserve meaning, uncertainty, negation and questions. Do not answer the message. Never add greetings, sales claims, guarantees, delivery promises, discounts or other commercial commitments. Preserve amounts, quantities, dates, models, currencies and units. Do not convert units or currencies. Use conversational language, not formal corporate prose. Output ONLY the translation without commentary, labels or quote wrappers.";
     public string ChinesePrompt { get; set; } = "Translate the user message into natural simplified Chinese. Preserve meaning, uncertainty, negation, questions, prices, quantities, dates, product models, currencies and units. Do not answer questions or add explanations, guarantees or commercial commitments. Do not convert units or currencies. Output ONLY the translated message, without commentary or quote wrappers.";
     public void Validate()
@@ -443,6 +443,9 @@ public sealed class OllamaClient : IDisposable
     // Whole sentences only. No substring replacement, fuzzy matching or cached chats.
     private static readonly Dictionary<string, string> EnglishPhrases = new(StringComparer.Ordinal)
     {
+        ["我会的"] = "I will.", ["我会的。"] = "I will.",
+        ["我会的！"] = "I will!", ["我会的!"] = "I will!",
+        ["我会的."] = "I will.",
         ["稍等"] = "One moment, please.", ["稍等。"] = "One moment, please.",
         ["稍等一下"] = "One moment, please.", ["稍等一下。"] = "One moment, please.",
         ["请等待一下"] = "Please wait a moment.", ["请等待一下。"] = "Please wait a moment.",
@@ -638,6 +641,7 @@ public sealed class OllamaClient : IDisposable
             prompt += " Protected facts for understanding meaning and grammar only (output each KEY unchanged, never substitute its value): " + JsonSerializer.Serialize(glossary, ReadableJson);
         }
         prompt += " Translate reassurance already present in the source without adding new guarantees: 放心 means rest assured/not worry; 不放心 means worried/concerned. Preserve who is reassuring whom.";
+        prompt += " Distinguish future intention from ability: 我会的 is I will, not I can do that. 我会检查 means I will check; 我会游泳 means I can swim. 我可能会 is I might, not I will. Translate 会 according to context; preserve negation and uncertainty, never turn ability into a promise or a promise into ability.";
         prompt += " Preserve the direction of comparisons and rhetorical questions: 'not such a small amount' must not become 'not that much'.";
         prompt += " When the source gives a price difference, preserve it as a difference (higher/lower BY the amount), never turn it into a total price.";
         prompt += " Recipient-directed instructions such as 你看看 mean please check/see; never change them into speaker intentions such as let me check. Keep first-person and second-person roles unchanged.";

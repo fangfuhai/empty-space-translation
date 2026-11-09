@@ -17,14 +17,16 @@ internal static class OctoberFeedback
         var settings = JsonSerializer.Deserialize<Settings>(await File.ReadAllTextAsync(path)) ?? throw new InvalidDataException();
         settings.Log = line => { if (line.StartsWith("MODEL retry")) Console.WriteLine(line); };
         using var client = new OllamaClient(settings, new FixtureTraceHandler());
+        var cases = selected == "november" ? new[] { "我会的", "我会的，但不能保证明天完成", "我会检查后告诉你", "我会游泳", "我不会游泳", "我可能会明天发货，但还没确定", "我不会提前发货" } : Cases;
+        if (selected == "november") selected = "";
         var ids = selected.Length == 0 ? [] : selected.Split(',').Select(int.Parse).ToHashSet();
         int returned = 0, failed = 0;
-        for (int i = 0; i < Cases.Length; i++)
+        for (int i = 0; i < cases.Length; i++)
         {
             if (ids.Count > 0 && !ids.Contains(i+1)) continue;
             using var ct = new CancellationTokenSource(TimeSpan.FromSeconds(settings.TimeoutSeconds));
             var watch = Stopwatch.StartNew();
-            try { string output = await client.TranslateAsync(Cases[i], true, ct.Token); returned++; Console.WriteLine(JsonSerializer.Serialize(new { id=i+1, status="RETURNED", output, ms=watch.ElapsedMilliseconds })); }
+            try { string output = await client.TranslateAsync(cases[i], true, ct.Token); returned++; Console.WriteLine(JsonSerializer.Serialize(new { id=i+1, status="RETURNED", output, ms=watch.ElapsedMilliseconds })); }
             catch (Exception e) { failed++; Console.WriteLine($"FAIL {i+1}: {e.GetType().Name}: {e.Message}"); }
         }
         Console.WriteLine($"{returned} RETURNED / {failed} FAIL / 0 SKIP; semantic review required.");

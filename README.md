@@ -4,19 +4,23 @@
 
 Windows 后台输入翻译工具。写完中文，快速按两次空格，通过本机 Ollama 翻译；也支持选区中英互译。适用于日常聊天、商务沟通，不自动发送消息。
 
-最新版本：**1.1.1**，构建标识 `ST-20261013-V111-Reliability`。作者：方赋海（Linthon）。
+最新版本：**1.1.2**，构建标识 `ST-20261109-V112-Startup`。作者：方赋海（Linthon）。
 
 1.1.1 修复模糊金额、小写币种、裸价格、季度区间和多行包装说明；新增常用快速回复、QTA 业务词条和可选开机启动。保留自定义 TXT 词库、多语种目标选择、故障日志导出；新增七种语言仍为试用，仅交付剪贴板。见 [本次更新](docs/RELEASE-1.1.1.md)、[功能说明](docs/FEATURES-1.1.md) 和 [词库模板](docs/glossary-example.txt)。
 
+1.1.2 修复意愿误译和自启动准备流程，52 + 39 项测试通过，真实模型 7 条样本返回并审阅。实际登录待验收。[更新说明](docs/RELEASE-1.1.2.md)。
+
 ## 下载
 
-- [1.1.1 最新版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.1-win-x64.zip)：本次修复和开机启动。[发布说明](docs/RELEASE-1.1.1.md)
+- [1.1.2 最新版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.2-win-x64.zip)
+
+- [1.1.1 历史版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.1-win-x64.zip)：本次修复和开机启动。[发布说明](docs/RELEASE-1.1.1.md)
 
 - [1.0.15 稳定版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.0.15-win-x64.zip)：日常中英翻译。[发布说明](docs/RELEASE-1.0.15.md)
 - [1.1.0 Preview 试用版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.0-preview-win-x64.zip)：自定义词库、多语种、日志导出。[发布说明](docs/RELEASE-1.1.0-preview.md)
 - [下载包 SHA-256 校验值](downloads/SHA256.txt)
 
-完整解压后运行其中的 SpaceTranslate.exe，保留全部配套文件。本包需 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。**当前仓库源码对应 1.1.1；1.0.15 提供已保留的运行包，不冒充具有独立历史源码标签。**
+完整解压后运行其中的 SpaceTranslate.exe，保留全部配套文件。本包需 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。**当前仓库源码对应 1.1.2；1.0.15 提供已保留的运行包，不冒充具有独立历史源码标签。**
 
 ## 使用方式
 
@@ -35,10 +39,10 @@ Windows 后台输入翻译工具。写完中文，快速按两次空格，通过
 
 1. 使用 Windows 10 / 11 x64，安装并启动 [Ollama](https://ollama.com/download/windows)。下载模型需要网络，已准备好的本地模型可用于离线翻译。
 2. 当前用户验证配置为 `qwen2.5:7b`；全新配置的源码默认值仍为 `qwen3:4b`。程序按配置使用模型，已有用户保留原配置即可，不会自动换成更大的模型。
-3. 本次本地包位于 `release-v1.1.1/`，依赖 .NET 8 Windows Desktop Runtime x64。EXE、DLL、deps.json、runtimeconfig.json 四个文件必须保留在同一目录。Git 仓库不包含本地发布目录，源码构建方式见下文。
+3. 本次本地包位于 `release-v1.1.2/`，依赖 .NET 8 Windows Desktop Runtime x64。EXE、DLL、deps.json、runtimeconfig.json 四个文件必须保留在同一目录。Git 仓库不包含本地发布目录，源码构建方式见下文。
 4. 双击 SpaceTranslate.exe。需要时点击“准备模型”，等待“准备好了”，再点击“隐藏到后台”。首次准备可能下载配置中指定的模型，耗时与网络、模型和硬件有关。
 5. 先用记事本测试双空格；英文译中文请选中文字后按 Ctrl+Alt+Z。升级时从托盘退出旧程序，再启动新版，避免同时运行多个版本。
-6. 需要开机启动时，勾选主窗口底部“登录 Windows 后自动启动（后台运行）”。默认关闭；移动程序目录后取消再重新勾选。Ollama 应自行设置为登录启动；如果其尚未就绪，请在主窗口点击“准备模型”。
+6. 需要开机启动时，勾选主窗口底部“登录 Windows 后自动启动（后台运行）”。默认关闭；移动程序目录后取消再重新勾选。新版自动连接/启动 Ollama 并预热已有模型。旧启动项请取消并重新勾选以更新路径。
 
 ## 配置与资源
 
@@ -74,8 +78,8 @@ C# / .NET 8 WinForms。需要 Windows 和 .NET 8 SDK。入口为 [App.cs](source
 dotnet run --project source/tests/Tests.csproj
 dotnet run --project source/regression/Regression.csproj
 
-# 当前源码为 1.1.1，保留旧版本目录供回退
-dotnet build source/src/SpaceTranslate.csproj -c Release -p:SelfContained=false -p:PublishSingleFile=false -o release-v1.1.1
+# 当前源码为 1.1.2，保留旧版本目录供回退
+dotnet build source/src/SpaceTranslate.csproj -c Release -p:SelfContained=false -p:PublishSingleFile=false -o release-v1.1.2
 
 # 可选自包含发布，体积更大
 dotnet publish source/src/SpaceTranslate.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o release-self-contained

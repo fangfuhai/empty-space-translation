@@ -8,6 +8,7 @@ if (args is ["live-feedback", var selected]) { await LiveFeedback(selected); ret
 if (args is ["live-languages"]) { await LiveLanguages(); return; }
 if (args is ["live-october"]) { await OctoberFeedback.Run(); return; }
 if (args is ["live-october", var selectedOctober]) { await OctoberFeedback.Run(selectedOctober); return; }
+if (args is ["live-november"]) { await OctoberFeedback.Run("november"); return; }
 int passed = 0, failed = 0;
 async Task Check(string name, Func<Task> action)
 {
@@ -29,6 +30,54 @@ async Task RejectAsync(Func<Task> action)
     try { await action(); } catch (InvalidDataException) { return; }
     throw new Exception("Expected InvalidDataException");
 }
+await Check("future commitment exact replies preserve punctuation and glossary priority", async () =>
+{
+    using var client = new OllamaClient(new Settings(), new MockHandler(_ => throw new Exception("Unexpected model request")));
+    Equal("I will.", await client.TranslateAsync("我会的",true,CancellationToken.None));
+    Equal("I will.", await client.TranslateAsync("我会的。",true,CancellationToken.None));
+    Equal("I will!", await client.TranslateAsync("我会的！",true,CancellationToken.None));
+    using var custom = new OllamaClient(new Settings { Terms = Terminology.Parse("en\t我会的\tWill do.") },new MockHandler(_ => throw new Exception("Unexpected request")));
+    Equal("Will do.",await custom.TranslateAsync("我会的",true,CancellationToken.None));
+});
+await Check("ability negation uncertainty and longer sentences use contextual translation", async () =>
+{
+    int calls = 0;
+    using var client = new OllamaClient(new Settings(),new MockHandler(async request =>
+    {
+        calls++;
+        string body = await request.Content!.ReadAsStringAsync();
+        Equal(true,body.Contains("Distinguish future intention from ability"));
+        return Reply("A contextual translation.");
+    }));
+    foreach (string source in new[] { "我会游泳", "我不会的", "我可能会", "我会的，但不能保证明天完成", "我会检查后告诉你" })
+        await client.TranslateAsync(source,true,CancellationToken.None);
+    Equal(5,calls);
+});
+await Check("startup launches once and waits for delayed service readiness", async () =>
+{
+    int probes=0,starts=0,waits=0;
+    bool result=await ServiceReadiness.WaitAsync(_ => ++probes<4 ? Task.FromException<bool>(new HttpRequestException()) : Task.FromResult(true),
+        () => starts++,(_,_) => { waits++; return Task.CompletedTask; },CancellationToken.None);
+    Equal(true,result); Equal(4,probes); Equal(1,starts); Equal(3,waits);
+    Equal(false,await ServiceReadiness.WaitAsync(_ => Task.FromResult(false),() => throw new Exception("Must not launch or download"),(_,_) => throw new Exception("Must not wait"),CancellationToken.None));
+});
+await Check("startup failures are bounded and cancellation prevents launch", async () =>
+{
+    int probes=0,starts=0;
+    try { await ServiceReadiness.WaitAsync(_ => { probes++; throw new HttpRequestException(); },()=>starts++,(_,_)=>Task.CompletedTask,CancellationToken.None); throw new Exception("Expected failure"); }
+    catch(IOException) { }
+    Equal(30,probes); Equal(1,starts);
+    using var cancel=new CancellationTokenSource(); cancel.Cancel();
+    try { await ServiceReadiness.WaitAsync(_=>throw new Exception("Must not probe"),()=>starts++,(_,_)=>Task.CompletedTask,cancel.Token); throw new Exception("Expected cancellation"); }
+    catch(OperationCanceledException) { }
+    Equal(1,starts);
+});
+await Check("startup malformed responses and launch failures propagate", async () =>
+{
+    await RejectAsync(()=>ServiceReadiness.WaitAsync(_=>throw new InvalidDataException("bad response"),()=>throw new Exception("Must not launch"),(_,_)=>Task.CompletedTask,CancellationToken.None));
+    try { await ServiceReadiness.WaitAsync(_=>throw new HttpRequestException(),()=>throw new IOException("launch failed"),(_,_)=>throw new Exception("Must not wait"),CancellationToken.None); throw new Exception("Expected launch failure"); }
+    catch(IOException e) { Equal("launch failed",e.Message); }
+});
 await Check("approximate amounts stay vague and cannot become exact thousands", () => Sync(() =>
 {
     foreach (var pair in new[] { ("好几千块钱", "several thousand CNY"), ("几十美元", "several tens of USD"), ("几百美元", "several hundred USD"), ("几万rmb", "several tens of thousands RMB") })
