@@ -6,21 +6,25 @@ Windows 后台输入翻译工具。写完中文，快速按两次空格，通过
 
 最新版本：**1.1.2**，构建标识 `ST-20261109-V112-Startup`。作者：方赋海（Linthon）。
 
-1.1.1 修复模糊金额、小写币种、裸价格、季度区间和多行包装说明；新增常用快速回复、QTA 业务词条和可选开机启动。保留自定义 TXT 词库、多语种目标选择、故障日志导出；新增七种语言仍为试用，仅交付剪贴板。见 [本次更新](docs/RELEASE-1.1.1.md)、[功能说明](docs/FEATURES-1.1.md) 和 [词库模板](docs/glossary-example.txt)。
+## 1.1.2 优化了什么
 
-1.1.2 修复意愿误译和自启动准备流程，52 + 39 项测试通过，真实模型 7 条样本返回并审阅。实际登录待验收。[更新说明](docs/RELEASE-1.1.2.md)。
+- **修正意愿表达**：“我会的”整句直接译成 `I will.`，避免变成表示能力的 `I can do that.`。支持常见句末标点，自定义词库仍优先。
+- **区分意愿、能力与可能性**：“我会检查”使用 will，“我会游泳”使用 can，“我可能会”保留 might；长句按上下文翻译，保留否定、条件和不确定性，不统一替换“会”。
+- **完善开机自动准备**：启动时自动连接 Ollama；服务未启动则尝试后台启动，等待就绪后预热已有模型，解决还要手动点击“准备模型”的问题。
+- **失败可恢复**：启动等待有重试次数和时间上限，退出可取消；保留暂停状态，不自动下载缺失模型。首次尚未安装服务或模型时，仍需手动准备。
+
+延续金额/日期/季度区间保护、多行包装说明、常用快速回复、TXT 自定义词库和日志导出。法、土、泰、日、俄、西、韩仍属试用方向，仅交付剪贴板。详见 [本版发布说明](docs/RELEASE-1.1.2.md)、[功能说明](docs/FEATURES-1.1.md) 和 [词库模板](docs/glossary-example.txt)。
 
 ## 下载
 
-- [1.1.2 最新版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.2-win-x64.zip)
-
-- [1.1.1 历史版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.1-win-x64.zip)：本次修复和开机启动。[发布说明](docs/RELEASE-1.1.1.md)
-
-- [1.0.15 稳定版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.0.15-win-x64.zip)：日常中英翻译。[发布说明](docs/RELEASE-1.0.15.md)
-- [1.1.0 Preview 试用版 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.0-preview-win-x64.zip)：自定义词库、多语种、日志导出。[发布说明](docs/RELEASE-1.1.0-preview.md)
+- [下载 1.1.2 Windows x64 ZIP](https://github.com/fangfuhai/empty-space-translation/raw/refs/heads/main/downloads/SpaceTranslate-1.1.2-win-x64.zip)
 - [下载包 SHA-256 校验值](downloads/SHA256.txt)
 
-完整解压后运行其中的 SpaceTranslate.exe，保留全部配套文件。本包需 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。**当前仓库源码对应 1.1.2；1.0.15 提供已保留的运行包，不冒充具有独立历史源码标签。**
+当前目录仅提供最新版；旧安装包从 main 移除，历史提交仍保留。当前源码对应 **1.1.2**。
+
+完整解压后运行 `SpaceTranslate.exe`，保留全部配套文件。需要 .NET 8 Windows Desktop Runtime x64 和本地 Ollama 模型。
+
+**从旧目录升级且已经开启自启动时，请在新版中取消后重新勾选一次**，将启动项更新到新版路径。
 
 ## 使用方式
 
@@ -40,7 +44,7 @@ Windows 后台输入翻译工具。写完中文，快速按两次空格，通过
 1. 使用 Windows 10 / 11 x64，安装并启动 [Ollama](https://ollama.com/download/windows)。下载模型需要网络，已准备好的本地模型可用于离线翻译。
 2. 当前用户验证配置为 `qwen2.5:7b`；全新配置的源码默认值仍为 `qwen3:4b`。程序按配置使用模型，已有用户保留原配置即可，不会自动换成更大的模型。
 3. 本次本地包位于 `release-v1.1.2/`，依赖 .NET 8 Windows Desktop Runtime x64。EXE、DLL、deps.json、runtimeconfig.json 四个文件必须保留在同一目录。Git 仓库不包含本地发布目录，源码构建方式见下文。
-4. 双击 SpaceTranslate.exe。需要时点击“准备模型”，等待“准备好了”，再点击“隐藏到后台”。首次准备可能下载配置中指定的模型，耗时与网络、模型和硬件有关。
+4. 双击 SpaceTranslate.exe，程序自动连接/启动 Ollama 并预热已有模型，等待“准备好了”。首次缺少模型时才需要点击“准备模型”下载配置中指定的模型；日常启动无需重复点击。
 5. 先用记事本测试双空格；英文译中文请选中文字后按 Ctrl+Alt+Z。升级时从托盘退出旧程序，再启动新版，避免同时运行多个版本。
 6. 需要开机启动时，勾选主窗口底部“登录 Windows 后自动启动（后台运行）”。默认关闭；移动程序目录后取消再重新勾选。新版自动连接/启动 Ollama 并预热已有模型。旧启动项请取消并重新勾选以更新路径。
 
@@ -78,7 +82,7 @@ C# / .NET 8 WinForms。需要 Windows 和 .NET 8 SDK。入口为 [App.cs](source
 dotnet run --project source/tests/Tests.csproj
 dotnet run --project source/regression/Regression.csproj
 
-# 当前源码为 1.1.2，保留旧版本目录供回退
+# 当前源码为 1.1.2
 dotnet build source/src/SpaceTranslate.csproj -c Release -p:SelfContained=false -p:PublishSingleFile=false -o release-v1.1.2
 
 # 可选自包含发布，体积更大
@@ -87,8 +91,9 @@ dotnet publish source/src/SpaceTranslate.csproj -c Release -r win-x64 --self-con
 # 可选真实模型测试，读取个人配置并占用模型资源
 dotnet run --project source/regression/Regression.csproj -- live-feedback
 dotnet run --project source/regression/Regression.csproj -- live-october
+dotnet run --project source/regression/Regression.csproj -- live-november
 ```
 
-1.1.1 最终验证：基础测试 52 PASS、定向测试 34 PASS，均 0 FAIL / 0 SKIP；真实模型样本 14 + 7 条返回，0 FAIL / 0 SKIP，并人工审阅关键语义。构建 0 警告 / 0 错误。没有操作真实桌面或写入开机启动注册表，登录自启动及输入框行为需实际验收。测试的返回状态不代表语义完美；细节与修复中失败记录见 [发布说明](docs/RELEASE-1.1.1.md)。
+1.1.2 验证：基础测试 **52 PASS**、定向测试 **39 PASS**，均 **0 FAIL / 0 SKIP**；真实模型 7 条样本返回，并人工审阅意愿、能力、否定、条件和不确定性。构建 0 警告 / 0 错误。实际注销/登录后的完整自启动仍待用户验收；模拟服务测试和样本返回不能证明所有场景与语义均正确。见 [详细验证说明](docs/RELEASE-1.1.2.md)。
 
 详细要求见 [需求与验收记录](docs/REQUIREMENTS.md)，更新见 [更新记录](docs/CHANGELOG.md)。源码采用 [MIT](LICENSE.txt)；外部模型和运行时遵循各自许可，见 [贡献与依赖](CREDITS.md)。
